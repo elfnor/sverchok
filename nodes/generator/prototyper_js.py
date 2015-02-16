@@ -160,6 +160,13 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
     def init(self, context):
         self.node_dict[hash(self)] = {}
 
+    def set_input_defaults(self):
+        this_func = self.get_node_function()
+        self.node_dict[hash(self)]['defaults'] = [i[2]['default'] for i in this_func('inputs')]
+
+    def get_input_defaults(self):
+        return self.node_dict[hash(self)]['defaults']
+
     def draw_buttons(self, context, layout):
         D = bpy.data
         sv_callback = "node.sv_prototypejs_callback"
@@ -194,6 +201,8 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
             self.STATE = 'LOADED'
 
             this_func = self.get_node_function()
+            self.set_input_defaults()
+
             ins = this_func('inputs')
             if ins:
                 print(ins)
@@ -223,9 +232,7 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
 
     def process(self):
         this_func = self.get_node_function()
-
-        # this is slow, do only once
-        node_input_defaults = [i[2]['default'] for i in this_func('inputs')]
+        node_input_defaults = self.get_input_defaults()
 
         args = []
         for _in, default_val in zip(self.inputs, node_input_defaults):
