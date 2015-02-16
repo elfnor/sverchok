@@ -117,11 +117,13 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
         D = bpy.data
         sv_callback = "node.sv_prototypejs_callback"
 
-        col = layout.column(align=True)
-        row = col.row()
-        row.prop(self, "origin", expand=True)
-
         if self.STATE == 'UNLOADED':
+
+            # show options Internal / External
+            col = layout.column(align=True)
+            row = col.row()
+            row.prop(self, "origin", expand=True)
+
             if self.origin == 'Internal':
                 row2 = col.row()
                 row2.prop_search(self, 'script_name', D, 'texts', text='', icon='TEXT')
