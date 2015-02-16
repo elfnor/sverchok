@@ -57,6 +57,18 @@ from sverchok.data_structure import (dataCorrect, updateNode)
 FAIL_COLOR = (0.8, 0.1, 0.1)
 READY_COLOR = (0, 0.8, 0.95)
 
+sock_dict = {
+    'v': 'VerticesSocket',
+    's': 'StringsSocket',
+    'm': 'MatrixSocket'
+}
+
+
+def new_output_socket(node, name, stype):
+    socket_type = sock_dict.get(stype)
+    if socket_type:
+        node.outputs.new(socket_type, name)
+
 
 class SvJSImporterOp(bpy.types.Operator):
 
@@ -93,13 +105,17 @@ class SvPrototypeCB(bpy.types.Operator):
         n = context.node
 
         if type_op == 'LOAD':
+            # add new sockets
             n.import_script()
 
-        if type_op == 'RELOAD':  # temp testing
+        if type_op == 'RELOAD':
+            # get connection matrix
             n.import_script()
+            # set connection matrix
 
         if type_op == 'CLEAR':  # temp testing
             n.deport_script()
+            n.reset_node()
 
     def execute(self, context):
         self.dispatch(context, self.fn_name)
@@ -155,7 +171,6 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
                     row2.operator(sv_callback, text='', icon='PLUGIN').fn_name = 'LOAD'
             else:
                 # show file loading, this will import to bpy.data.texts
-                col.label('not yet supported')
                 col.operator("node.js_importer", text='import', icon='FILESEL')
 
         else:
@@ -170,6 +185,17 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
             ctx = execjs.compile(local_file)
             self.set_node_function(ctx.call)
             self.STATE = 'LOADED'
+
+            this_func = self.get_node_function()
+            ins = this_func('inputs')
+            print(ins)
+
+            outs = this_func('outputs')
+            print(outs)
+            if outs:
+                for name, prefix in outs:
+                    new_output_socket(self, name, prefix)
+
         except:
             self.STATE = 'UNLOADED'
         print(self.STATE)
@@ -179,15 +205,17 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
         self.STATE = 'UNLOADED'
         print('unloaded: '.format(self.script_name))
 
+    def reset_node(self):
+        in_out = [self.inputs, self.outputs]
+        for socket_set in in_out:
+            socket_set.clear()
+
     def process(self):
         this_func = self.get_node_function()
 
         args = (10, 20, 30)
         v, e = this_func("sv_proto_main", *args)
         print(v, e)
-
-        fg = this_func('inputs', '')
-        print(fg)
 
 
 classes = [SvJSImporterOp, SvPrototypeCB, SvPrototypeJS]
