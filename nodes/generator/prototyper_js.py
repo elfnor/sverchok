@@ -57,6 +57,37 @@ defaults = list(range(32))
 FAIL_COLOR = (0.8, 0.1, 0.1)
 READY_COLOR = (0, 0.8, 0.95)
 
+
+def dirty_reload(script_name):
+
+    # for this to work the text editor needs to have the text-panel visible
+
+    # print('called')
+    # text_obj = bpy.data.texts[script_name]
+    # text_path = text_obj.filepath
+    # if text_path:
+    #     print('reloaded from path')
+    #     with open(text_path) as fpath:
+    #         file_str = ''.join(fpath.readlines())
+    #         print(file_str)
+    #         text_obj.from_string(file_str)
+    #         text_obj.is_modified = False
+
+    # for window in bpy.context.window_manager.windows:
+    #     for area in window.screen.areas:
+
+    #         if not area.type == 'TEXT_EDITOR':
+    #             continue
+
+    #         for s in area.spaces:
+    #             print(s.type, dir(s))
+    #             if s.type == 'TEXT_EDITOR':
+    #                 # set_props(s)
+    #                 # .resolve_conflict(resolution='RELOAD')
+    #                 print(dir(s.text))
+    pass
+
+
 sock_dict = {
     'v': 'VerticesSocket',
     's': 'StringsSocket',
@@ -124,15 +155,19 @@ class SvPrototypeCB(bpy.types.Operator):
         if type_op == 'LOAD':
             n.import_script()
 
-        if type_op == 'RELOAD':
+        elif type_op == 'RELOAD':
             # get connection matrix
             n.reset_node()
             n.import_script()
             # set connection matrix
 
-        if type_op == 'CLEAR':  # temp testing
+        elif type_op == 'CLEAR':  # temp testing
             n.deport_script()
             n.reset_node()
+
+        elif type_op == 'REFRESH_FROM_DISK':
+            # bpy.ops.text.resolve_conflict(resolution='RELOAD')
+            dirty_reload(n.script_name)
 
     def execute(self, context):
         self.dispatch(context, self.fn_name)
@@ -148,6 +183,7 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
     node_dict = {}
     script_name = StringProperty()
     STATE = StringProperty(default='UNLOADED')
+    auto_refresh = BoolProperty(default=0)
 
     mode_options = [
         ("Internal", "Internal", "", 0),
@@ -188,6 +224,14 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
     def draw_buttons(self, context, layout):
         D = bpy.data
         sv_callback = "node.sv_prototypejs_callback"
+
+        # I can't believe there's no nice way to do this... yet.
+        # if self.script_name:
+        #     if bpy.data.texts[self.script_name].is_modified:
+        #         col = layout.column(align=True)
+        #         col.operator(sv_callback, text='', icon='ERROR').fn_name = 'REFRESH_FROM_DISK'
+        #         if self.auto_refresh:
+        #             dirty_reload(self.script_name)
 
         if self.STATE == 'UNLOADED':
 
@@ -249,6 +293,7 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
             socket_set.clear()
 
     def process(self):
+
         this_func = self.get_node_function()
         node_input_defaults = self.get_input_defaults()
 
