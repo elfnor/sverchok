@@ -112,7 +112,6 @@ class SvPrototypeCB(bpy.types.Operator):
         n = context.node
 
         if type_op == 'LOAD':
-            # add new sockets
             n.import_script()
 
         if type_op == 'RELOAD':
@@ -225,9 +224,21 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
     def process(self):
         this_func = self.get_node_function()
 
-        args = (10, 20, 30)
-        v, e = this_func("sv_proto_main", *args)
-        print(v, e)
+        node_input_defaults = [i[2]['default'] for i in this_func('inputs')]
+
+        args = []
+        for _in, default_val in zip(self.inputs, node_input_defaults):
+            if _in.is_linked:
+                args_input = _in.sv_get()[0][0]
+                args.append(args_input)
+            else:
+                args.append(default_val)
+
+        js_output = this_func("sv_proto_main", *args)
+
+        for _out, out_val in zip(self.outputs, js_output):
+            if _out.is_linked:
+                _out.sv_set(out_val)
 
 
 classes = [SvJSImporterOp, SvPrototypeCB, SvPrototypeJS]
