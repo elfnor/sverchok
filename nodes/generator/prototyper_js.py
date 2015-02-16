@@ -58,6 +58,35 @@ FAIL_COLOR = (0.8, 0.1, 0.1)
 READY_COLOR = (0, 0.8, 0.95)
 
 
+class SvJSImporterOp(bpy.types.Operator):
+
+    bl_idname = "node.js_importer"
+    bl_label = "sv JS Import Operator"
+
+    filepath = StringProperty(
+        name="File Path",
+        description="Filepath used for importing the js file",
+        maxlen=1024, default="", subtype='FILE_PATH')
+
+    # it may be possible to carry these from invoke to execute instead..
+    node_tree = StringProperty()
+    node_name = StringProperty()
+
+    def execute(self, context):
+        n = bpy.data.node_groups[self.node_tree].nodes[self.node_name]
+        t = bpy.data.texts.load(self.filepath)
+        n.script_name = t.name
+        n.import_script()
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        self.node_name = context.node.name
+        self.node_tree = context.node.id_data.name
+        wm = context.window_manager
+        wm.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+
 class SvPrototypeCB(bpy.types.Operator):
 
     bl_idname = "node.sv_prototypejs_callback"
@@ -131,7 +160,9 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
                     row2.operator(sv_callback, text='', icon='PLUGIN').fn_name = 'LOAD'
             else:
                 # show file loading, this will import to bpy.data.texts
-                pass
+                col.label('not yet supported')
+                col.operator("node.js_importer", text='import', icon='FILESEL')
+
         else:
 
             row = layout.row()
@@ -164,7 +195,7 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
         print(fg)
 
 
-classes = [SvPrototypeCB, SvPrototypeJS]
+classes = [SvJSImporterOp, SvPrototypeCB, SvPrototypeJS]
 
 
 def register():
