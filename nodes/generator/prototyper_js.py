@@ -53,7 +53,7 @@ from sverchok.utils.sv_panels_tools import sv_get_local_path
 from sverchok.node_tree import SverchCustomTreeNode
 from sverchok.data_structure import (dataCorrect, updateNode)
 
-
+defaults = list(range(32))
 FAIL_COLOR = (0.8, 0.1, 0.1)
 READY_COLOR = (0, 0.8, 0.95)
 
@@ -75,6 +75,16 @@ def new_input_socket(node, stype, name, dval):
     if socket_type:
         socket = node.inputs.new(socket_type, name)
         socket.default = dval
+
+        if isinstance(dval, (float, int)):
+            offset = len(node.inputs)
+            if isinstance(dval, float):
+                socket.prop_type = "float_list"
+                node.float_list[offset] = dval
+            else:  # dval is int
+                socket.prop_type = "int_list"
+                node.int_list[offset] = dval
+            socket.prop_index = offset
 
 
 class SvJSImporterOp(bpy.types.Operator):
@@ -151,14 +161,22 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
         update=updateNode
     )
 
+    int_list = IntVectorProperty(
+        name='int_list', description="Integer list",
+        default=defaults, size=32, update=updateNode)
+
+    float_list = FloatVectorProperty(
+        name='float_list', description="Float list",
+        default=defaults, size=32, update=updateNode)
+
+    def init(self, context):
+        self.node_dict[hash(self)] = {}
+
     def set_node_function(self, node_function):
         self.node_dict[hash(self)]['node_function'] = node_function
 
     def get_node_function(self):
         return self.node_dict[hash(self)].get('node_function')
-
-    def init(self, context):
-        self.node_dict[hash(self)] = {}
 
     def set_input_defaults(self):
         this_func = self.get_node_function()
