@@ -223,14 +223,14 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
 
             ins = this_func('inputs')
             if ins:
-                print(ins)
+                # print(ins)
                 for name, stype, info in ins:
                     dval = info['default']
                     new_input_socket(self, stype, name, dval)
 
             outs = this_func('outputs')
             if outs:
-                print(outs)
+                # print(outs)
                 for name, prefix in outs:
                     new_output_socket(self, name, prefix)
 
@@ -254,11 +254,8 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
 
         args = []
         for _in, default_val in zip(self.inputs, node_input_defaults):
-            if _in.is_linked:
-                args_input = _in.sv_get()[0][0]
-                args.append(args_input)
-            else:
-                args.append(default_val)
+            args_input = _in.sv_get()[0][0]
+            args.append(args_input)
 
         js_output = this_func("sv_proto_main", *args)
 
