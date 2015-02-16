@@ -68,20 +68,15 @@ class SvJSImporterOp(bpy.types.Operator):
         description="Filepath used for importing the js file",
         maxlen=1024, default="", subtype='FILE_PATH')
 
-    # it may be possible to carry these from invoke to execute instead..
-    node_tree = StringProperty()
-    node_name = StringProperty()
-
     def execute(self, context):
-        n = bpy.data.node_groups[self.node_tree].nodes[self.node_name]
+        n = self.node
         t = bpy.data.texts.load(self.filepath)
         n.script_name = t.name
         n.import_script()
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        self.node_name = context.node.name
-        self.node_tree = context.node.id_data.name
+        self.node = context.node
         wm = context.window_manager
         wm.fileselect_add(self)
         return {'RUNNING_MODAL'}
