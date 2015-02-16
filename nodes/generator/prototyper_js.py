@@ -70,6 +70,13 @@ def new_output_socket(node, name, stype):
         node.outputs.new(socket_type, name)
 
 
+def new_input_socket(node, stype, name, dval):
+    socket_type = sock_dict.get(stype)
+    if socket_type:
+        socket = node.inputs.new(socket_type, name)
+        socket.default = dval
+
+
 class SvJSImporterOp(bpy.types.Operator):
 
     bl_idname = "node.js_importer"
@@ -110,6 +117,7 @@ class SvPrototypeCB(bpy.types.Operator):
 
         if type_op == 'RELOAD':
             # get connection matrix
+            n.reset_node()
             n.import_script()
             # set connection matrix
 
@@ -188,11 +196,15 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
 
             this_func = self.get_node_function()
             ins = this_func('inputs')
-            print(ins)
+            if ins:
+                print(ins)
+                for name, stype, info in ins:
+                    dval = info['default']
+                    new_input_socket(self, stype, name, dval)
 
             outs = this_func('outputs')
-            print(outs)
             if outs:
+                print(outs)
                 for name, prefix in outs:
                     new_output_socket(self, name, prefix)
 
