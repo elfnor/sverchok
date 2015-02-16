@@ -224,6 +224,7 @@ class SvPrototypeJS(bpy.types.Node, SverchCustomTreeNode):
     def process(self):
         this_func = self.get_node_function()
 
+        # this is slow, do only once
         node_input_defaults = [i[2]['default'] for i in this_func('inputs')]
 
         args = []
