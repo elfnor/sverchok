@@ -377,7 +377,7 @@ class SvGenerativeArtNode(bpy.types.Node, SverchCustomTreeNode):
             edges_out = []
             verts_out = [] 
             faces_out = [] 
-            #make last entry in shapes None to allow make tube to finish last tube	
+            #make last entry in shapes None to allow make tube to finish last tube
             if shapes[-1]:
                 shapes.append(None)            
             for i, shape in enumerate(shapes):
