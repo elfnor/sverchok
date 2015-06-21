@@ -31,6 +31,7 @@ from sverchok.data_structure import (changable_sockets, multi_socket,
 
 import random
 import mathutils as mu
+import logging
 
 import xml.etree.cElementTree as etree
 from xml.etree.cElementTree import fromstring
@@ -60,9 +61,14 @@ class LSystem:
         self._tree = fromstring(rules)
         self._maxDepth = int(self._tree.get("max_depth"))
         self._voxelSize = self._tree.get("clearance")
-        print("clearance", self._voxelSize)
+        logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)-8s %(filename)s:%(lineno)-4d: %(message)s')
+        logging.info("clearance %s" %(self._voxelSize))
+       
         self._progressCount = 0
         self._maxObjects = maxObjects
+        
+        
 
     """
     Returns a list of "shapes".
@@ -109,7 +115,7 @@ class LSystem:
     
             if len(stack) >= self._maxDepth:
                 shapes.append(None)
-                print(len(shapes))
+                logging.info('shape len(stack) >= self._maxDepth None')
                 continue
     
             if depth >= local_max_depth:
@@ -118,6 +124,7 @@ class LSystem:
                     rule = _pickRule(self._tree, successor)
                     stack.append((rule, 0, matrix))
                 shapes.append(None)
+                logging.info('shape depth >= local_max_depth None')
                 continue
                 
               
@@ -148,17 +155,18 @@ class LSystem:
                         else:
                             loc_key = (0,0,0)
                             
-                        print(loc_key, len(shapes))
+                        #print(loc_key, len(shapes))
                         if loc_key not in locs:
                             if self._voxelSize:
                                 locs.add(loc_key)
                             name = statement.get("shape")
                             shape = (name, matrix)
                             shapes.append(shape)
+                            logging.info('{0} shape {1} {2} {3}'.format(loc_key, name, tstr, matrix.to_translation()))
                             voxel_stop = False
                         else:
                             voxel_stop = True  
-                            print(loc_key, 'voxel stop', len(shapes))
+                            logging.info('{0} voxel_stop {1} {2}'.format(loc_key, tstr, matrix.to_translation()))
                                                   
                     else:
                         raise ValueError("bad xml", statement.tag)
