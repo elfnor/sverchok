@@ -59,6 +59,8 @@ class LSystem:
     def __init__(self, rules, maxObjects):
         self._tree = fromstring(rules)
         self._maxDepth = int(self._tree.get("max_depth"))
+        self._voxelSize = self._tree.get("clearance")
+        print("clearance", self._voxelSize)
         self._progressCount = 0
         self._maxObjects = maxObjects
 
@@ -76,11 +78,22 @@ class LSystem:
     def _evaluate(self, entry):
         stack = [entry]
         shapes = []
+        locs = set()
+        voxel_stop = False
         while len(stack) > 0:
             
             if len(shapes) > self._maxObjects:
-                print('max objects reached')
+                print('max objects reached', len(shapes), self._maxObjects)
                 break
+                
+            if voxel_stop:
+                if "successor" in rule.attrib:
+                    successor = rule.get("successor")
+                    rule = _pickRule(self._tree, successor)
+                    stack.append((rule, 0, matrix))
+                shapes.append(None)
+                voxel_stop = False
+                continue      
     
             if len(shapes) > self._progressCount + 1000:
                 print(len(shapes), "curve segments so far")
@@ -90,13 +103,13 @@ class LSystem:
             
             rule, depth, matrix = stack.pop()
 
-    
             local_max_depth = self._maxDepth
             if "max_depth" in rule.attrib:
                 local_max_depth = int(rule.get("max_depth"))
     
             if len(stack) >= self._maxDepth:
                 shapes.append(None)
+                print(len(shapes))
                 continue
     
             if depth >= local_max_depth:
@@ -106,6 +119,8 @@ class LSystem:
                     stack.append((rule, 0, matrix))
                 shapes.append(None)
                 continue
+                
+              
         
             for statement in rule:              
                 tstr = statement.get("transforms","")
@@ -128,9 +143,22 @@ class LSystem:
                         stack.append(entry)
                   
                     elif statement.tag == "instance":
-                        name = statement.get("shape")
-                        shape = (name, matrix)
-                        shapes.append(shape)
+                        if self._voxelSize:
+                            loc_key = tuple([round(i) for i in matrix.to_translation()/float(self._voxelSize)])
+                        else:
+                            loc_key = (0,0,0)
+                            
+                        print(loc_key, len(shapes))
+                        if loc_key not in locs:
+                            if self._voxelSize:
+                                locs.add(loc_key)
+                            name = statement.get("shape")
+                            shape = (name, matrix)
+                            shapes.append(shape)
+                            voxel_stop = False
+                        else:
+                            voxel_stop = True  
+                            print(loc_key, 'voxel stop', len(shapes))
                                                   
                     else:
                         raise ValueError("bad xml", statement.tag)
