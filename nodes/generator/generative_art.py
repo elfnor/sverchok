@@ -71,6 +71,7 @@ class LSystem:
         self._progressCount = 0
         self._maxObjects = maxObjects
         self.matrix = mu.Matrix.Identity(4)
+        self.locs = set()
         
 
     """
@@ -100,13 +101,26 @@ class LSystem:
                     self.stack.append(entry)
               
                 elif statement.tag == "instance":
-                    name = statement.get("shape")
-                    shape = (name, self.matrix)
-                    self.shapes.append(shape)
-                                              
+                    vecTrans = self.matrix.to_translation()
+                    if self._voxelSize:
+                        loc_key = tuple(
+                                    [round(i)
+                                    for i
+                                    in vecTrans / float(self._voxelSize)])
+                    else:
+                        loc_key = (0, 0, 0)
+                    if loc_key in self.locs:
+                        logging.info('{0} voxel_stop {1} {2}'.format(loc_key, tstr, vecTrans))
+                        return # to while loop
+                    else:                        
+                        if self._voxelSize:
+                            self.locs.add(loc_key) 
+                        name = statement.get("shape")
+                        shape = (name, self.matrix)
+                        self.shapes.append(shape)
                 else:
                     raise ValueError("bad xml", statement.tag)
-
+        return
 
     def evaluate(self, seed=0):
         random.seed(seed)
