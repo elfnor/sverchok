@@ -36,6 +36,7 @@ import logging
 import xml.etree.cElementTree as etree
 from xml.etree.cElementTree import fromstring
 
+import itertools
 
 def flat(*args):
     for x in args:
@@ -44,6 +45,9 @@ def flat(*args):
                 yield y
         else:
             yield x
+
+fixed_item = [0, 1, 1, 1, 0, 0, 0, 0]
+iterfi = 0
 
 """
 ---------------------------------------------------
@@ -66,11 +70,78 @@ class LSystem:
 
         self._progressCount = 0
         self._maxObjects = maxObjects
+        
 
     """
     Returns a list of "shapes".
     Each shape is a 2-tuple: (shape name, transform matrix).
     """
+
+    def _process_rule(self, rule):
+        for statement in rule:
+            tstr = statement.get("transforms", "")
+            if not(tstr):
+                tstr = ''
+                for t in ['tx', 'ty', 'tz', 'rx', 'ry', 'rz',
+                          'sa', 'sx', 'sy', 'sz']:
+                    tvalue = statement.get(t)
+                    if tvalue:
+                        n = eval(tvalue)
+                        tstr += "{} {:f} ".format(t, n)
+            xform = _parseXform(tstr)
+            count = int(statement.get("count", 1))
+            for n in range(count):
+                matrix *= xform
+
+                if statement.tag == "call":
+                    rule = _pickRule(self._tree, statement.get("rule"))
+                    cloned_matrix = matrix.copy()
+                    entry = (rule, depth + 1, cloned_matrix)
+                    stack.append(entry)
+
+                elif statement.tag == "instance":
+                    vecTrans = matrix.to_translation()
+                    if self._voxelSize:
+                        loc_key = tuple(
+                                  [round(i)
+                                   for i
+                                   in vecTrans / float(self._voxelSize)])
+                    else:
+                        loc_key = (0, 0, 0)
+
+                    #print(loc_key, len(shapes))
+                    if loc_key in locs and loc_key != last_loc_key:
+                        # at this point we are three deep in loops
+                        # while len(stack) > 0:
+                        #    ....    
+                        #    for statement in rule:
+                        #        ....
+                        #        for n in range(count): 
+                        #            ....
+                        # and need to go back to next iteration of while loop
+
+                        voxel_stop = True
+                        logging.info('{0} voxel_stop {1} {2}'.format(loc_key, tstr, vecTrans))
+                        logging.info(len(stack))
+                        if len(stack) > 1:
+                            logging.info(stack[-1][0].get("dir"))
+                            logging.info(stack[-2][0].get("dir"))
+                    else:
+                        if self._voxelSize:
+                            locs.add(loc_key)
+                            last_loc_key = loc_key
+                        name = statement.get("shape")
+                        shape = (name, matrix)
+                        shapes.append(shape)
+                        logging.info('{0} shape {1} {2} {3}'.format(loc_key, name, tstr, vecTrans))
+                        voxel_stop = False
+
+                else:
+                    raise ValueError("bad xml", statement.tag)
+
+
+
+
     def evaluate(self, seed=0):
         random.seed(seed)
         rule = _pickRule(self._tree, "entry")
@@ -104,6 +175,7 @@ class LSystem:
             if len(stack) >= self._maxDepth:
                 shapes.append(None)
                 logging.info('shape len(stack) >= self._maxDepth None')
+                iterfi = 0
                 continue # with next iteration of while len(stack) > 0: loop
 
             if depth >= local_max_depth:
@@ -113,6 +185,7 @@ class LSystem:
                     stack.append((rule, 0, matrix))
                 shapes.append(None)
                 logging.info('shape depth >= local_max_depth None')
+                iterfi = 0
                 continue  # with next iteration of while len(stack) > 0: loop
 
             if voxel_stop:
@@ -124,66 +197,8 @@ class LSystem:
                 voxel_stop = False
                 continue
 
-            for statement in rule:
-                tstr = statement.get("transforms", "")
-                if not(tstr):
-                    tstr = ''
-                    for t in ['tx', 'ty', 'tz', 'rx', 'ry', 'rz',
-                              'sa', 'sx', 'sy', 'sz']:
-                        tvalue = statement.get(t)
-                        if tvalue:
-                            n = eval(tvalue)
-                            tstr += "{} {:f} ".format(t, n)
-                xform = _parseXform(tstr)
-                count = int(statement.get("count", 1))
-                for n in range(count):
-                    matrix *= xform
-
-                    if statement.tag == "call":
-                        rule = _pickRule(self._tree, statement.get("rule"))
-                        cloned_matrix = matrix.copy()
-                        entry = (rule, depth + 1, cloned_matrix)
-                        stack.append(entry)
-
-                    elif statement.tag == "instance":
-                        vecTrans = matrix.to_translation()
-                        if self._voxelSize:
-                            loc_key = tuple(
-                                      [round(i)
-                                       for i
-                                       in vecTrans / float(self._voxelSize)])
-                        else:
-                            loc_key = (0, 0, 0)
-
-                        #print(loc_key, len(shapes))
-                        if loc_key in locs and loc_key != last_loc_key:
-                            # at this point we are three deep in loops
-                            # while len(stack) > 0:
-                            #    ....    
-                            #    for statement in rule:
-                            #        ....
-                            #        for n in range(count): 
-                            #            ....
-                            # and need to go back to next iteration of while loop
-
-                            voxel_stop = True
-                            logging.info('{0} voxel_stop {1} {2}'.format(loc_key, tstr, vecTrans))
-                            logging.info(len(stack))
-                            if len(stack) > 1:
-                                logging.info(stack[-1][0].get("dir"))
-                                logging.info(stack[-2][0].get("dir"))
-                        else:
-                            if self._voxelSize:
-                                locs.add(loc_key)
-                                last_loc_key = loc_key
-                            name = statement.get("shape")
-                            shape = (name, matrix)
-                            shapes.append(shape)
-                            logging.info('{0} shape {1} {2} {3}'.format(loc_key, name, tstr, vecTrans))
-                            voxel_stop = False
-
-                    else:
-                        raise ValueError("bad xml", statement.tag)
+            
+                self._process_rule(rule)
 
         print(("\nGenerated %d shapes." % len(shapes)))
         return shapes
@@ -241,6 +256,7 @@ class LSystem:
         return verts_out, edges_out, faces_out
 
 
+
 def _pickRule(tree, name):
     rules = tree.findall("rule")
     elements = []
@@ -261,6 +277,15 @@ def _pickRule(tree, name):
         if n < weight:
             break
         n = n - weight
+
+    try:
+      item = tuples[iterfi][0]
+      iterfi = iterfi + 1      
+    except IndexError:
+      iterfi = 0
+      item = tuples[iterfi][0]
+      iterfi = iterfi + 1 
+
     return item
 
 _xformCache = {}
