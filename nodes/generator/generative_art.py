@@ -92,6 +92,7 @@ class LSystem:
             xform = _parseXform(tstr)
             count = int(statement.get("count", 1))
             for n in range(count):
+                old_matrix  = self.matrix.copy()
                 self.matrix *= xform
                 
                 if statement.tag == "call":
@@ -111,12 +112,19 @@ class LSystem:
                         loc_key = (0, 0, 0)
                     if loc_key in self.locs:
                         logging.info('{0} voxel_stop {1} {2}'.format(loc_key, tstr, vecTrans))
+                        if "successor" in self.rule.attrib:
+                            logging.info('successor following voxel stop')
+                            successor = self.rule.get("successor")
+                            self.rule = _pickRule(self._tree, successor)
+                            self.stack.append((self.rule, 0, old_matrix))
+                        self.shapes.append(None)
                         return # to while loop
                     else:                        
                         if self._voxelSize:
                             self.locs.add(loc_key) 
                         name = statement.get("shape")
                         shape = (name, self.matrix)
+                        logging.info('{0} shape at {1}'.format(name, vecTrans))
                         self.shapes.append(shape)
                 else:
                     raise ValueError("bad xml", statement.tag)
